@@ -1,0 +1,72 @@
+// Prisma schema for the Background Verification Platform.
+//
+// Run:
+//   npx prisma generate          # regenerate the TS client
+//   npx prisma migrate dev       # create a new migration in dev
+//
+// The candidate's `status` mirrors the highest-level VerificationStatus
+// (PENDING | VERIFIED | PARTIAL | FAILED). We keep it denormalized on
+// the candidate row so list views don't have to join the log table.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  candidates Candidate[]
+
+  @@map("users")
+}
+
+model Candidate {
+  id            String   @id @default(uuid())
+  fullName      String
+  email         String
+  phone         String
+  // We store the raw 12-digit Aadhaar so we can re-verify later, but it
+  // is *never* returned by any API — see maskers.ts for the masking logic.
+  aadhaarNumber String
+  panNumber     String
+  dob           DateTime
+  address       String
+  status        String   @default("PENDING")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  createdById String
+  createdBy   User   @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  verificationLogs VerificationLog[]
+
+  @@index([createdById])
+  @@index([status])
+  @@map("candidates")
+}
+
+model VerificationLog {
+  id                 String   @id @default(uuid())
+  candidateId        String
+  // "AADHAAR" | "PAN"
+  verificationType   String
+  requestPayload     Json
+  responsePayload    Json
+  // "verified" | "failed" — matches what the mock APIs return.
+  verificationStatus String
+  verifiedAt         DateTime @default(now())
+
+  candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@index([candidateId])
+  @@map("verification_logs")
+}
