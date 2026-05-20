@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: bgv-backend
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install && npx prisma generate && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: FRONTEND_ORIGIN
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: AADHAAR_API_URL
+        sync: false
+      - key: PAN_API_URL
+        sync: false
